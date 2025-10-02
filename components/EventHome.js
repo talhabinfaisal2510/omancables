@@ -8,53 +8,59 @@ import SpeakersShowcase from "./SpeakersShowcase";
 
 const theme = createTheme({ palette: { mode: "dark" } });
 
-const SAMPLE_SPEAKERS = [
-  {
-    id: "1",
-    name: "Aisha Al-Harthy",
-    designation: "Sustainability Lead",
-    photo: "/vercel.svg",
-  },
-  {
-    id: "2",
-    name: "Omar Al-Farsi",
-    designation: "R&D Director",
-    photo: "/next.svg",
-  },
-  {
-    id: "3",
-    name: "Layla Al-Mandhari",
-    designation: "Innovation Manager",
-    photo: "/window.svg",
-  },
-  {
-    id: "4",
-    name: "Hassan Al-Hashmi",
-    designation: "ESG Analyst",
-    photo: "/globe.svg",
-  },
-  {
-    id: "5",
-    name: "Sara Nasser",
-    designation: "Chief Sustainability Officer",
-    photo: "/vercel.svg",
-  },
-];
+import { useState, useEffect } from "react";
 
 export default function EventHome() {
+  const [speakers, setSpeakers] = useState([]);
+  const [videoUrl, setVideoUrl] = useState(''); // ADDED: State for dynamic video URL
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // CHANGED: Fetch both speakers and home configuration
+    const fetchData = async () => {
+      try {
+        const [speakersRes, homeRes] = await Promise.all([
+          fetch('/api/speakers'),
+          fetch('/api/home') // ADDED: Fetch home config for video URL
+        ]);
+
+        const speakersData = await speakersRes.json();
+        const homeData = await homeRes.json();
+
+        if (speakersData.success) {
+          setSpeakers(speakersData.data);
+        }
+
+        if (homeData.success) {
+          setVideoUrl(homeData.data.videoUrl); // ADDED: Set dynamic video URL
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+
+    // ADDED: Update live speaker every minute based on current time
+    const intervalId = setInterval(() => {
+      setSpeakers(prev => [...prev]); // Trigger re-render to check live status
+    }, 60000); // Check every 60 seconds
+
+    return () => clearInterval(intervalId); // ADDED: Cleanup interval on unmount
+  }, []);
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box
-        sx={{
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          bgcolor: "background.default",
-        }}
-      >
-        <VideoHero src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" />
-        <SpeakersShowcase speakers={SAMPLE_SPEAKERS} />
+      <Box sx={{
+        height: "100vh",
+        display: "flex", // ADDED: Use flex layout for proper height distribution
+        flexDirection: "column", // ADDED: Stack children vertically
+        overflow: "hidden" // ADDED: Prevent any scrolling at root level
+      }}>
+        {videoUrl && <VideoHero src={videoUrl} />}
+        {!loading && <SpeakersShowcase speakers={speakers} />}
       </Box>
     </ThemeProvider>
   );

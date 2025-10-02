@@ -8,7 +8,6 @@ import VideoOverlay from "./VideoOverlay";
 
 export default function VideoHero({
   src,
-  height = { xs: "70vh", sm: "72vh", md: "79vh" },
 }) {
   const [ready, setReady] = React.useState(false);
   const [currentVideoSrc, setCurrentVideoSrc] = React.useState(src); // State to manage dynamic video source
@@ -20,7 +19,12 @@ export default function VideoHero({
   };
 
   return (
-    <Box sx={{ position: "relative", height, width: "100%" }}>
+    <Box sx={{
+      position: "relative",
+      flex: "8 1 0%", // CHANGED: Shorthand for flexGrow: 8, flexShrink: 1, flexBasis: 0% - takes 8 parts of available space
+      width: "100%",
+      minHeight: "50vh" // ADDED: Maintain minimum height constraint
+    }}>
       {!ready && (
         <Stack
           alignItems="center"
@@ -31,8 +35,8 @@ export default function VideoHero({
           }}
         >
           <CircularProgress
-            size={56} // CHANGED: larger for visibility
-            thickness={5} // NEW: thicker stroke so it stands out
+            size={`clamp(40px, 8vw, 56px)`} // Changed: Fluid sizing using clamp for responsiveness
+            thickness={5}
             color="inherit" // NEW: use current color
             sx={{
               mb: 2,
@@ -45,9 +49,10 @@ export default function VideoHero({
           <Typography
             variant="h6"
             sx={{
-              mt: 2,
+              mt: `clamp(0.5rem, 2vw, 2rem)`, // Changed: Fluid margin using clamp
               fontWeight: "bold",
               letterSpacing: "0.05em",
+              fontSize: `clamp(0.875rem, 2.5vw, 1.25rem)`, // Added: Fluid font size for better scaling
               background: "linear-gradient(90deg, #00c6ff, #0072ff)", // NEW: gradient text for visual appeal
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",

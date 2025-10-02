@@ -1,404 +1,281 @@
 "use client";
-
-import { useState, useEffect, useRef } from "react";
+// pages/index.js or components/BubbleApp.js
+import React, { useState, useEffect } from 'react';
 import {
-  Box,
+  Container,
   Typography,
-  Button,
-  TextField,
+  Box,
+  Alert,
+  Snackbar,
+  Fab,
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
-  MenuItem,
-  IconButton,
-  Input,
-  FormControl,
-  InputLabel,
-  CircularProgress,
-} from "@mui/material";
-import LogoutIcon from "@mui/icons-material/Logout";
-import { useRouter } from "next/navigation";
-import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+  IconButton
+} from '@mui/material';
+import { Add as AddIcon, Close as CloseIcon } from '@mui/icons-material';
+import BubbleList from '../../components/bubbles/bubbleList';
+import CreateBubbleForm from '../../components/bubbles/CreateBubbleForm';
+import UpdateBubbleForm from '../../components/bubbles/UpdateBubbleForm';
+import SpeakerManagement from '../../components/speakers/SpeakerManagement';
+import HomeVideoManagement from '@/components/Home/HomeVideoManagement';
 
-// Button titles array
-const buttonTitles = [
-  "Discover OCI",
-  "OCI Information",
-  "Media",
-  "Website iFrame",
-  "3D Tour",
-  "Sustainability Journey",
-  "Ambitions",
-  "United Nations SDGs",
-  "Focus Areas",
-  "Featured Events",
-  "Sustainability Day",
-  "Today's Agenda",
-  "OCI Chatbot",
-  "Safety First (Zero & Beyond)",
-  "Safety Video",
-  "Emergency Evacuation Map",
-];
+export default function BubbleApp() {
+  const [bubbles, setBubbles] = useState([]);
+  const [media, setMedia] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [openCreateDialog, setOpenCreateDialog] = useState(false);
+  const [openUpdateDialog, setOpenUpdateDialog] = useState(false);
+  const [selectedBubble, setSelectedBubble] = useState(null);
+  const [selectedMedia, setSelectedMedia] = useState(null);
 
-// Get all button titles
-const getAllTitles = () => buttonTitles;
-
-export default function CmsPage() {
-  const router = useRouter();
-  const [openForm, setOpenForm] = useState(false);
-  const [submitting, setSubmitting] = useState(false); // NEW: track API in-flight state
-
-  const [formData, setFormData] = useState({
-    type: "",
-    title: "",
-    url: "",
-    websiteUrl: "",
-  });
-  const [message, setMessage] = useState("");
-  const [openLogoutConfirm, setOpenLogoutConfirm] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const fileInputRef = useRef(null);
-
-  const titles = getAllTitles(buttonTitles);
-
-  // Check auth on load
   useEffect(() => {
-    const token = sessionStorage.getItem("authToken");
-    if (!token) {
-      router.replace("/login");
-    }
-  }, [router]);
+    fetchBubbles();
+    fetchMedia();
+  }, []);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleSubmit = async () => {
+  const fetchBubbles = async () => {
     try {
-      if (!formData.title || !formData.type) {
-        setMessage("❌ Title and type are required");
-        return;
-      }
-      setSubmitting(true); // NEW: show progress while API runs
-
-      // Debug logging to see what we're sending
-      console.log("=== DEBUG CMS SEND ===");
-      console.log("Form data type:", formData.type);
-      console.log("Form data title:", formData.title);
-      console.log(
-        "Selected file:",
-        selectedFile ? selectedFile.name : "No file"
-      );
-
-      if (formData.type === "website") {
-        // Validate website URL is provided
-        if (!formData.websiteUrl?.trim()) {
-          setMessage("❌ Website URL is required");
-          return;
-        }
-
-        console.log("🌐 SUBMITTING WEBSITE:", {
-          title: formData.title,
-          websiteUrl: formData.websiteUrl,
-        });
-
-        // Handle website type separately using websites API
-        const res = await fetch("/api/websites", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: formData.title,
-            websiteUrl: formData.websiteUrl,
-          }),
-        });
-
-        if (res.ok) {
-          const responseData = await res.json();
-          console.log("✅ WEBSITE API SUCCESS:", responseData);
-          setMessage("✅ Website added successfully");
-          handleReset();
-        } else {
-          const errorData = await res.json();
-          console.log("❌ WEBSITE API ERROR:", errorData);
-          setMessage(
-            `❌ Failed to add website: ${errorData.error || "Unknown error"}`
-          );
-        }
-      } else if (["qr", "image", "video", "pdf"].includes(formData.type)) {
-        // Handle file uploads - unified approach for all file types
-        if (!selectedFile) {
-          setMessage("❌ Please select a file to upload");
-          return;
-        }
-
-        const submitData = new FormData();
-        submitData.append("title", formData.title);
-        submitData.append("type", formData.type); // Explicit type for API processing
-        submitData.append("file", selectedFile); // Generic file key as fallback
-
-        // Debug log FormData contents
-        console.log("FormData contents:");
-        for (let [key, value] of submitData.entries()) {
-          console.log(key, value);
-        }
-
-        const res = await fetch("/api/media", {
-          method: "POST",
-          body: submitData,
-        });
-
-        if (res.ok) {
-          const responseData = await res.json();
-          console.log("API Response:", responseData); // Debug response
-          setMessage(`✅ ${formData.type.toUpperCase()} uploaded successfully`);
-          handleReset();
-        } else {
-          const errorData = await res.json();
-          console.log("API Error:", errorData); // Debug error
-          setMessage(
-            `❌ Failed to upload ${formData.type}: ${
-              errorData.error || "Unknown error"
-            }`
-          );
-        }
-      } else {
-        setMessage("❌ Unsupported type selected");
-        return;
-      }
+      const response = await fetch('/api/bubble'); // Updated endpoint to match folder structure
+      if (!response.ok) throw new Error('Failed to fetch bubbles');
+      const data = await response.json();
+      setBubbles(Array.isArray(data) ? data : data.bubbles || []); // Ensure bubbles is always an array
     } catch (err) {
-      console.error(err);
-      setMessage("❌ Error processing media");
+      setError('Failed to load bubbles');
     } finally {
-      setSubmitting(false); // NEW: hide progress after API completes
+      setLoading(false);
     }
   };
 
-  const handleReset = () => {
-    setFormData({
-      type: "",
-      title: "",
-      url: "",
-      websiteUrl: "",
-    });
-    setSelectedFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-    setOpenForm(false);
-  };
-
-  const handleFileSelect = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      setSelectedFile(file);
+  const fetchMedia = async () => {
+    try {
+      const response = await fetch('/api/media/all'); // Updated endpoint to match folder structure
+      if (!response.ok) throw new Error('Failed to fetch media');
+      const data = await response.json();
+      setMedia(data.success ? data.media : []);
+    } catch (err) {
+      console.error('Failed to load media:', err);
     }
   };
 
-  const handleLogout = () => {
-    sessionStorage.removeItem("authToken");
-    router.replace("/login");
+  const handleCreateBubble = async (bubbleData) => {
+    try {
+      const response = await fetch('/api/bubble', { // Updated endpoint to match folder structure
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bubbleData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create bubble');
+      }
+
+      await fetchBubbles();
+      setSuccess('Bubble created successfully!');
+      setOpenCreateDialog(false);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleUpdateBubble = async (id, bubbleData) => {
+    try {
+      const response = await fetch(`/api/bubble/${id}`, { // Updated endpoint to match folder structure
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bubbleData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update bubble');
+      }
+
+      await fetchBubbles();
+      setSuccess('Bubble updated successfully!');
+      setOpenUpdateDialog(false);
+      setSelectedBubble(null);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleDeleteBubble = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this bubble?')) return;
+
+    try {
+      const response = await fetch(`/api/bubble/${id}`, { // Updated endpoint to match folder structure
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete bubble');
+      }
+
+      await fetchBubbles();
+      setSuccess('Bubble deleted successfully!');
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #89f7fe, #0663d0)",
-
-        color: "white",
-        position: "relative",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "space-between",
-        px: 3,
-        pt: 8,
-        pb: 16,
-      }}
-    >
-      <IconButton
-        onClick={() => setOpenLogoutConfirm(true)}
-        sx={{
-          position: "absolute",
-          right: 16,
-          top: 16,
-          color: "error.main",
-          zIndex: 999,
-          bgcolor: "rgba(255,255,255,0.8)",
-          "&:hover": { bgcolor: "rgba(0,0,0,0.7)" },
-        }}
-      >
-        <LogoutIcon
-          sx={{
-            fontSize: "4rem",
-            color: "#000",
-            backgroundColor: "rgba(255,255,255,0.8)",
-            borderRadius: "50%",
-            padding: "0.5rem",
-            cursor: "pointer",
-            transition: "all 0.3s ease",
-            "&:hover": {
-              backgroundColor: "rgba(0,0,0,0.8)",
-              color: "#fff",
-            },
-          }}
-        />
-      </IconButton>
-
-      <Typography variant="h3" gutterBottom>
-        CMS Dashboard
+    <Container maxWidth="lg" sx={{ py: 4, backgroundColor: '#ededed' }}>
+      <Typography variant="h3" component="h1" gutterBottom align="center" color='black'>
+        CMS Dashboard {/* CHANGED: More generic title */}
       </Typography>
 
-      <Box
-        sx={{
-          flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Button
-          variant="contained"
-          onClick={() => setOpenForm(true)}
+      {/* ADDED: Home video management section at top */}
+      <HomeVideoManagement />
+
+      {bubbles.length === 0 && !loading ? (
+        // Show create button when no bubbles exist
+        <Box
           sx={{
-            background: "linear-gradient(135deg, #ff512f, #dd2476)",
-            "&:hover": {
-              background: "linear-gradient(135deg, #dd2476, #ff512f)",
-            },
-            py: 1.5,
-            px: 4,
-            fontSize: "1.2rem",
-            borderRadius: 2,
-            boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            py: 8,
+            textAlign: 'center'
           }}
         >
-          Upload Media
-        </Button>
-      </Box>
+          <Typography variant="h5" color="text.secondary" gutterBottom >
+            No bubbles found
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            Get started by creating your first bubble
+          </Typography>
+          <Box
+            component="button"
+            onClick={() => setOpenCreateDialog(true)}
+            sx={{
+              px: 4,
+              py: 2,
+              bgcolor: 'primary.main',
+              color: 'black',
+              border: 'none',
+              borderRadius: 2,
+              fontSize: '1rem',
+              cursor: 'pointer',
+              '&:hover': {
+                bgcolor: 'primary.dark'
+              }
+            }}
+          >
+            Create Your First Bubble
+          </Box>
+        </Box>
+      ) : (
+        <BubbleList
+          bubbles={bubbles}
+          media={media}
+          loading={loading}
+          onEdit={(bubble) => {
+            setSelectedBubble(bubble);
+            setOpenUpdateDialog(true);
+          }}
+          onDelete={(id) => handleDeleteBubble(id)}
+          onViewMedia={(mediaItem) => {
+            setSelectedMedia(mediaItem);
+          }}
+        />
+      )}
 
-      {/* Upload Form Dialog */}
+      {/* Create Bubble Dialog */}
       <Dialog
-        open={openForm}
-        onClose={() => setOpenForm(false)}
-        maxWidth="sm"
+        open={openCreateDialog}
+        onClose={() => setOpenCreateDialog(false)}
+        maxWidth="md"
         fullWidth
       >
-        <DialogTitle>Upload Media</DialogTitle>
-        <DialogContent>
-          <Box sx={{ mt: 2 }}>
-            <TextField
-              select
-              fullWidth
-              label="Title"
-              name="title"
-              value={formData.title}
-              onChange={handleInputChange}
-              margin="normal"
-            >
-              {titles.map((title) => (
-                <MenuItem key={title} value={title}>
-                  {title}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              select
-              fullWidth
-              label="Type"
-              name="type"
-              value={formData.type}
-              onChange={handleInputChange}
-              margin="normal"
-            >
-              <MenuItem value="image">Image</MenuItem>
-              <MenuItem value="video">Video</MenuItem>
-              <MenuItem value="pdf">PDF</MenuItem>
-              <MenuItem value="website">Website</MenuItem>
-              <MenuItem value="qr">QR Code</MenuItem>
-            </TextField>
-
-            {formData.type === "website" && ( // CHANGED: render only when website selected
-              <TextField
-                fullWidth
-                label="Website URL"
-                name="websiteUrl"
-                value={formData.websiteUrl}
-                onChange={handleInputChange}
-                margin="normal"
-              />
-            )}
-
-            {["image", "video", "pdf", "qr"].includes(formData.type) && ( // NEW: file chooser only for upload types
-              <FormControl fullWidth margin="normal">
-                <Input
-                  type="file"
-                  inputRef={fileInputRef}
-                  onChange={handleFileSelect}
-                  inputProps={{
-                    accept:
-                      formData.type === "image"
-                        ? "image/*"
-                        : formData.type === "video"
-                        ? "video/*"
-                        : formData.type === "pdf"
-                        ? ".pdf"
-                        : "image/*,.pdf", // CHANGED: safe default for 'qr'
-                  }}
-                  startAdornment={
-                    <CloudUploadIcon sx={{ mr: 1, color: "primary.main" }} />
-                  }
-                  disabled={submitting} // NEW: prevent changes while submitting
-                />
-              </FormControl>
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenForm(false)} disabled={submitting}>
-            {" "}
-            {/* NEW: disabled during submit */}
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleSubmit}
-            disabled={submitting} // NEW: prevent double submits
-            sx={{ minWidth: "8rem" }} // NEW: keep button width stable for spinner
+        <DialogTitle>
+          Create New Bubble
+          <IconButton
+            onClick={() => setOpenCreateDialog(false)}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
           >
-            {submitting ? ( // UPDATED: show spinner and text together
-              <>
-                <CircularProgress size={20} sx={{ mr: 1 }} /> Submit
-              </>
-            ) : (
-              "Submit"
-            )}
-          </Button>
-        </DialogActions>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <CreateBubbleForm
+            bubbles={bubbles}
+            media={media}
+            onSubmit={handleCreateBubble}
+            onCancel={() => setOpenCreateDialog(false)}
+          />
+        </DialogContent>
       </Dialog>
 
-      {/* Confirm Logout Dialog */}
+      {/* Update Bubble Dialog */}
       <Dialog
-        open={openLogoutConfirm}
-        onClose={() => setOpenLogoutConfirm(false)}
+        open={openUpdateDialog}
+        onClose={() => setOpenUpdateDialog(false)}
+        maxWidth="md"
+        fullWidth
       >
-        <DialogTitle>Confirm Logout</DialogTitle>
-        <DialogContent>Are you sure you want to Logout?</DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenLogoutConfirm(false)}>Cancel</Button>
-          <Button variant="contained" color="error" onClick={handleLogout}>
-            Logout
-          </Button>
-        </DialogActions>
+        <DialogTitle>
+          Update Bubble
+          <IconButton
+            onClick={() => setOpenUpdateDialog(false)}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          {selectedBubble && (
+            <UpdateBubbleForm
+              bubble={selectedBubble}
+              bubbles={bubbles}
+              media={media}
+              onSubmit={(data) => handleUpdateBubble(selectedBubble._id || selectedBubble.id, data)}
+              onCancel={() => {
+                setOpenUpdateDialog(false);
+                setSelectedBubble(null);
+              }}
+            />
+          )}
+        </DialogContent>
       </Dialog>
 
-      {message && (
-        <Typography sx={{ mt: 4, textAlign: "center" }}>{message}</Typography>
-      )}
-    </Box>
+
+      {/* Floating Action Button */}
+      <Fab
+        color="primary"
+        aria-label="add"
+        sx={{ position: 'fixed', bottom: 16, right: 16 }}
+        onClick={() => setOpenCreateDialog(true)}
+      >
+        <AddIcon />
+      </Fab>
+
+      {/* Snackbars for feedback */}
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
+        onClose={() => setError('')}
+      >
+        <Alert onClose={() => setError('')} severity="error">
+          {error}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={!!success}
+        autoHideDuration={4000}
+        onClose={() => setSuccess('')}
+      >
+        <Alert onClose={() => setSuccess('')} severity="success">
+          {success}
+        </Alert>
+      </Snackbar>
+      <SpeakerManagement />
+    </Container>
+
   );
 }

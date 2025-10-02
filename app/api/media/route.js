@@ -51,7 +51,8 @@ export async function POST(req) {
     // Get all form data values
     const title = formData.get("title");
     const type = formData.get("type");
-    const file = formData.get("file");
+    // Try to get file using the type as key first, then fallback to 'file' key
+    let file = formData.get(type) || formData.get("file");
 
     console.log("=== RECEIVED DATA ===");
     console.log("Title:", title);
@@ -136,6 +137,100 @@ export async function POST(req) {
     );
   } catch (err) {
     console.error("=== API ERROR ===", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+// PUT endpoint to update existing media
+export async function PUT(req) {
+  try {
+    await dbConnect();
+
+    const { searchParams } = new URL(req.url);
+    const mediaId = searchParams.get("id");
+
+    // Enhanced validation to catch invalid ObjectId values
+    if (!mediaId || mediaId === '[object Object]' || mediaId === 'undefined' || mediaId === 'null') {
+      console.error('Invalid mediaId received:', mediaId);
+      return NextResponse.json({ error: "Valid Media ID is required" }, { status: 400 });
+    }
+
+    // Validate ObjectId format
+    if (!/^[0-9a-fA-F]{24}$/.test(mediaId)) {
+      console.error('Invalid ObjectId format:', mediaId);
+      return NextResponse.json({ error: "Invalid Media ID format" }, { status: 400 });
+    }
+
+    const formData = await req.formData();
+    const title = formData.get("title");
+    const type = formData.get("type");
+    // Try to get file using the type as key first, then fallback to 'file' key
+    let file = formData.get(type) || formData.get("file");
+
+    const media = await Media.findById(mediaId);
+    if (!media) {
+      return NextResponse.json({ error: "Media not found" }, { status: 404 });
+    }
+
+    // Handle file upload if new file is provided
+    let fileUrl = media.url;
+    if (file) {
+      const expectedMimeTypes = allowedByType[type];
+      if (!expectedMimeTypes.includes(file.type)) {
+        return NextResponse.json(
+          { error: `Invalid file type. Expected ${expectedMimeTypes.join(", ")} for type ${type}` },
+          { status: 400 }
+        );
+      }
+
+      if (file.size > 25 * 1024 * 1024) {
+        return NextResponse.json({ error: "File too large (max 25MB)" }, { status: 400 });
+      }
+
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const result = await uploadToCloudinary(buffer, file.type);
+      fileUrl = result.secure_url;
+    }
+
+    // Update media details
+    media.title = title?.trim() || media.title;
+    media.type = type?.trim() || media.type;
+    media.url = fileUrl;
+
+    await media.save();
+
+    return NextResponse.json({ success: true, media }, { status: 200 });
+  } catch (err) {
+    console.error("Error updating media:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+// DELETE endpoint to delete a media item
+export async function DELETE(req) {
+  try {
+    await dbConnect();
+
+    const { searchParams } = new URL(req.url);
+    const mediaId = searchParams.get("id");
+
+    if (!mediaId) {
+      return NextResponse.json({ error: "Media ID is required" }, { status: 400 });
+    }
+
+    const media = await Media.findById(mediaId);
+    if (!media) {
+      return NextResponse.json({ error: "Media not found" }, { status: 404 });
+    }
+
+    // Optionally, delete from Cloudinary if needed
+    // await deleteFromCloudinary(media.public_id);
+
+    await media.remove();
+
+    return NextResponse.json({ success: true, message: "Media deleted successfully" }, { status: 200 });
+  } catch (err) {
+    console.error("Error deleting media:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState,useEffect } from "react";
 import { Box, Button, Typography, Collapse } from "@mui/material";
 import { use1080x1920 } from "../hooks/use1080x1920";
 import PdfModal from "../components/modals/PdfModal";
@@ -10,41 +10,33 @@ import VideoModal from "../components/modals/VideoModal";
 
 const VideoOverlay = ({ onVideoChange }) => {
   const is1080x1920 = use1080x1920();
-  // Hierarchical button structure with proper nesting
-  const buttonHierarchy = {
-    "Discover OCI": {
-      id: 1,
-      subButtons: {
-        "OCI Information": {
-          id: 11,
-          subButtons: {
-            Media: { id: 111 },
-            "Website iFrame": { id: 112 },
-          },
-        },
-        "3D Tour": { id: 12 },
-        "Sustainability Journey": { id: 13 },
-        Ambitions: { id: 14 },
-        "United Nations SDGs": { id: 15 },
-        "Focus Areas": { id: 16 },
-      },
-    },
-    "Featured Events": {
-      id: 2,
-      subButtons: {
-        "Sustainability Day": { id: 21 },
-        "Today's Agenda": { id: 22 },
-        "OCI Chatbot": { id: 23 },
-      },
-    },
-    "Safety First (Zero & Beyond)": {
-      id: 3,
-      subButtons: {
-        "Safety Video": { id: 31 },
-        "Emergency Evacuation Map": { id: 32 },
-      },
-    },
+  // Remove hardcoded buttonHierarchy object completely
+  const [bubbles, setBubbles] = useState([]); // Store fetched bubbles from database
+  const [loading, setLoading] = useState(true);
+  // Add this function to build hierarchy dynamically from database bubbles
+  const buildBubbleHierarchy = (parentId = null) => {
+    return bubbles
+      .filter(bubble => {
+        // For root level (parentId === null), find bubbles with null or undefined parentBubbleId
+        if (parentId === null) {
+          return !bubble.parentBubbleId;
+        }
+        // For child levels, match parentBubbleId
+        return bubble.parentBubbleId === parentId || bubble.parentBubbleId?._id === parentId;
+      })
+      .reduce((acc, bubble) => {
+        const bubbleId = bubble._id || bubble.id;
+        acc[bubble.title] = {
+          id: bubbleId,
+          media: bubble.media, // Include media reference for leaf bubbles
+          subButtons: buildBubbleHierarchy(bubbleId) // Recursively build child hierarchy
+        };
+        return acc;
+      }, {});
   };
+
+  // Get root level bubbles (call this where buttonHierarchy was used)
+  const buttonHierarchy = buildBubbleHierarchy();
 
   // Video mapping for different buttons - centralized video source management
   const videoSources = {
@@ -62,7 +54,6 @@ const VideoOverlay = ({ onVideoChange }) => {
   // State to track active hierarchy levels
   const [activeMain, setActiveMain] = useState(null);
   const [activeSub, setActiveSub] = useState(null);
-  // Modal state management for different media types
 
   // Modal state management for different media types
   const [modalState, setModalState] = useState({
@@ -74,7 +65,23 @@ const VideoOverlay = ({ onVideoChange }) => {
     mediaArray: null, // Added for PhotosModal which expects array of media objects
   });
 
-  // API call to fetch media by title from database
+  useEffect(() => {
+    const fetchBubbles = async () => {
+      try {
+        const response = await fetch('/api/bubble'); // Fetch all bubbles with populated media
+        if (!response.ok) throw new Error('Failed to fetch bubbles');
+        const data = await response.json();
+        setBubbles(data.bubbles || []); // Store bubbles in state
+      } catch (error) {
+        console.error('Error fetching bubbles:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBubbles();
+  }, []);
+
   const fetchMediaByTitle = async (title) => {
     try {
       const response = await fetch(
@@ -91,94 +98,84 @@ const VideoOverlay = ({ onVideoChange }) => {
     }
   };
 
-  // Centralized button click handler with database integration
-  const handleButtonClick = async (buttonLabel, isMainButton = false) => {
-    console.log("Button clicked:", buttonLabel); // Debug log to track button clicks
+  const handleButtonClick = async (buttonLabel, bubbleData = null, isMainButton = false) => { // Added bubbleData parameter
+    console.log("Button clicked:", buttonLabel);
 
-    // Check database for any data with matching title using media API
-    const data = await fetchMediaByTitle(buttonLabel);
-    console.log("Fetched data:", data); // Debug log for fetched data
+    // First check if bubbleData has media populated (from database)
+    if (bubbleData?.media) {
+      const data = bubbleData.media; // Use pre-populated media from bubble
+      console.log("Using bubble media:", data);
 
-    if (data) {
-      // Handle different content types based on data.type
+      // Handle different content types (same logic as before, just using bubble.media instead of API call)
       if (data.type === "pdf") {
         setModalState({
           open: true,
           type: "pdf",
           url: data.url,
           title: data.title,
-          mediaId: data._id, // Added mediaId for consistency
+          mediaId: data._id,
         });
+        return;
       } else if (data.type === "website" && data.websiteUrl) {
         setModalState({
           open: true,
           type: "website",
           url: data.websiteUrl,
           title: data.title,
-          mediaId: data._id, // Added mediaId for consistency
+          mediaId: data._id,
         });
+        return;
       } else if (data.type === "qr") {
-        // Added QR type handling
-        console.log("Opening QR modal with mediaId:", data._id); // Debug log to verify ID
         setModalState({
           open: true,
           type: "qr",
-          url: null, // QR doesn't need direct URL as it generates download link
+          url: null,
           title: data.title,
-          mediaId: data._id, // Using _id from MongoDB document
+          mediaId: data._id,
         });
+        return;
       } else if (data.type === "image") {
-        // Added image type handling
-        console.log("Opening Photos modal with data:", data); // Debug log for image
-        // Convert single image data to array format expected by PhotosModal
-        const imageArray = [
-          {
-            type: "image",
-            fileUrl: data.url, // PhotosModal expects fileUrl property
-            fileName: data.title,
-            _id: data._id,
-          },
-        ];
+        const imageArray = [{
+          type: "image",
+          fileUrl: data.url,
+          fileName: data.title,
+          _id: data._id,
+        }];
         setModalState({
           open: true,
           type: "image",
-          url: null, // Not needed for PhotosModal
+          url: null,
           title: data.title,
           mediaId: data._id,
-          mediaArray: imageArray, // Added array format for PhotosModal
+          mediaArray: imageArray,
         });
+        return;
       } else if (data.type === "video") {
-        // Added video type handling
-        console.log("Opening Video modal with data:", data); // Debug log for video
-        // Convert single video data to array format expected by VideoModal
-        const videoArray = [
-          {
-            type: "video",
-            url: data.url, // VideoModal expects url property for database videos
-            fileName: data.title,
-            _id: data._id,
-          },
-        ];
+        const videoArray = [{
+          type: "video",
+          url: data.url,
+          fileName: data.title,
+          _id: data._id,
+        }];
         setModalState({
           open: true,
           type: "video",
-          url: null, // Not needed for VideoModal
+          url: null,
           title: data.title,
           mediaId: data._id,
-          mediaArray: videoArray, // Added array format for VideoModal
+          mediaArray: videoArray,
         });
+        return;
       }
-
-      return; // Exit early after handling any data
     }
 
-    // Fallback to video sources if no database match
-    const videoSrc = videoSources[buttonLabel];
-    if (videoSrc && onVideoChange) {
-      onVideoChange(videoSrc);
+    // Fallback: fetch media by title if not in bubble data (backward compatibility)
+    const data = await fetchMediaByTitle(buttonLabel);
+    if (data) {
+      // ... keep existing fetchMediaByTitle logic for fallback
     }
 
-    // Handle hierarchy state for main buttons
+    // Handle hierarchy state for main buttons (keep existing logic)
     if (isMainButton) {
       if (activeMain === buttonLabel) {
         setActiveMain(null);
@@ -240,9 +237,8 @@ const VideoOverlay = ({ onVideoChange }) => {
             <Box
               key={button.id}
               sx={{
-                animation: `slideUp 0.6s ease-out ${
-                  index * 0.1
-                }s both, float 3s ease-in-out infinite ${index * 0.5}s`,
+                animation: `slideUp 0.6s ease-out ${index * 0.1
+                  }s both, float 3s ease-in-out infinite ${index * 0.5}s`,
                 "@keyframes float": {
                   "0%, 100%": {
                     transform: "translateY(0px)",
@@ -264,7 +260,7 @@ const VideoOverlay = ({ onVideoChange }) => {
             >
               <Button
                 variant="contained"
-                onClick={() => handleButtonClick(button.label, true)} // Use centralized handler for main buttons
+                onClick={() => handleButtonClick(buttonLabel, buttonHierarchy[buttonLabel], true)}
                 sx={{
                   minWidth: is1080x1920
                     ? "260px"
@@ -409,19 +405,16 @@ const VideoOverlay = ({ onVideoChange }) => {
                     <Box
                       key={subButton.id}
                       sx={{
-                        animation: `slideUp 0.4s ease-out ${
-                          index * 0.05
-                        }s both`,
+                        animation: `slideUp 0.4s ease-out ${index * 0.05
+                          }s both`,
                       }}
                     >
                       <Button
                         variant="outlined"
                         onClick={() => {
-                          handleButtonClick(subLabel); // Trigger video change for sub buttons
-                          if (subButton.subButtons) {
-                            setActiveSub(
-                              activeSub === subLabel ? null : subLabel
-                            );
+                          handleButtonClick(subLabel, subButton); // Pass bubble data including media
+                          if (subButton.subButtons && Object.keys(subButton.subButtons).length > 0) { // Check if has children
+                            setActiveSub(activeSub === subLabel ? null : subLabel);
                           }
                         }}
                         sx={{
@@ -498,14 +491,13 @@ const VideoOverlay = ({ onVideoChange }) => {
                     <Box
                       key={subSubButton.id}
                       sx={{
-                        animation: `slideUp 0.3s ease-out ${
-                          index * 0.03
-                        }s both`,
+                        animation: `slideUp 0.3s ease-out ${index * 0.03
+                          }s both`,
                       }}
                     >
                       <Button
                         variant="text"
-                        onClick={() => handleButtonClick(subSubLabel)} // Trigger video change for sub-sub buttons
+                        onClick={() => handleButtonClick(subSubLabel, subSubButton)} // Trigger video change for sub-sub buttons
                         sx={{
                           width: is1080x1920
                             ? "300px"
