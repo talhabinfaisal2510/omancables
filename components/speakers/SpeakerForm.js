@@ -19,28 +19,31 @@ export default function SpeakerForm({ speaker, speakers, onSubmit, onCancel }) {
         name: '',
         designation: '',
         imageUrl: '',
+        popupImageUrl: '',
         startTime: '',
         endTime: '',
         order: 0
     });
-    const [imageFile, setImageFile] = useState(null); // Store selected image file
-    const [imagePreview, setImagePreview] = useState(''); // Store preview URL
-    const [uploading, setUploading] = useState(false); // Track upload state
+    const [imageFile, setImageFile] = useState(null);
+    const [imagePreview, setImagePreview] = useState('');
+    const [popupImageFile, setPopupImageFile] = useState(null);
+    const [popupImagePreview, setPopupImagePreview] = useState('');
+    const [uploading, setUploading] = useState(false);
 
     useEffect(() => {
         if (speaker) {
-            // Edit mode - populate form with existing speaker data
             setFormData({
                 name: speaker.name,
                 designation: speaker.designation,
                 imageUrl: speaker.imageUrl,
+                popupImageUrl: speaker.popupImageUrl || speaker.imageUrl,
                 startTime: speaker.startTime,
                 endTime: speaker.endTime,
                 order: speaker.order
             });
-            setImagePreview(speaker.imageUrl); // Show existing image in edit mode
+            setImagePreview(speaker.imageUrl);
+            setPopupImagePreview(speaker.popupImageUrl || speaker.imageUrl);
         } else {
-            // Create mode - auto-assign next order number
             setFormData(prev => ({
                 ...prev,
                 order: speakers?.length || 0
@@ -59,50 +62,85 @@ export default function SpeakerForm({ speaker, speakers, onSubmit, onCancel }) {
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            // Validate file type
             if (!file.type.startsWith('image/')) {
                 alert('Please select a valid image file');
                 return;
             }
+            setImageFile(file);
+            setImagePreview(URL.createObjectURL(file));
+        }
+    };
 
-            setImageFile(file); // Store file for upload
-            setImagePreview(URL.createObjectURL(file)); // Create preview URL from file
+    // Handle popup image selection
+    const handlePopupImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Please select a valid image file');
+                return;
+            }
+            setPopupImageFile(file);
+            setPopupImagePreview(URL.createObjectURL(file));
         }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        setUploading(true); // Changed: Set uploading state at the start for all submissions
+        // Validate required images for new speaker creation
+        if (!speaker) {
+            if (!imageFile) {
+                alert('Thumbnail image is required');
+                return;
+            }
+            if (!popupImageFile) {
+                alert('Popup image is required');
+                return;
+            }
+        }
+
+        setUploading(true);
 
         try {
-            // If new image selected, convert to base64
-            if (imageFile) {
-                const reader = new FileReader();
+            const submissionData = { ...formData };
 
+            // Convert thumbnail image to base64 if new file selected
+            if (imageFile) {
                 const fileData = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
                     reader.onloadend = () => resolve(reader.result);
                     reader.onerror = reject;
                     reader.readAsDataURL(imageFile);
                 });
 
-                // Pass the file data along with form data
-                await onSubmit({ // Added: await the submission
-                    ...formData,
-                    file: {
-                        data: fileData,
-                        type: imageFile.type,
-                        name: imageFile.name
-                    }
-                });
-            } else {
-                // No new image, just submit existing data
-                await onSubmit(formData); // Added: await the submission
+                submissionData.file = {
+                    data: fileData,
+                    type: imageFile.type,
+                    name: imageFile.name
+                };
             }
+
+            // Convert popup image to base64 if new file selected
+            if (popupImageFile) {
+                const popupFileData = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(popupImageFile);
+                });
+
+                submissionData.popupFile = {
+                    data: popupFileData,
+                    type: popupImageFile.type,
+                    name: popupImageFile.name
+                };
+            }
+
+            await onSubmit(submissionData);
         } catch (err) {
-            alert('Failed to process: ' + err.message); // Changed: Generic error message
+            alert('Failed to process: ' + err.message);
         } finally {
-            setUploading(false); // Changed: Always reset uploading state in finally block
+            setUploading(false);
         }
     };
 
@@ -130,13 +168,13 @@ export default function SpeakerForm({ speaker, speakers, onSubmit, onCancel }) {
             {/* Image Upload Section */}
             <Box sx={{ mb: 2 }}>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Speaker Image *
+                    Thumbnail Image * <Typography component="span" variant="caption" color="text.disabled">(displayed in Carousel)</Typography>
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    {imagePreview && ( // Show image preview if available
+                    {imagePreview && (
                         <Avatar
                             src={imagePreview}
-                            alt="Preview"
+                            alt="Thumbnail Preview"
                             sx={{ width: 80, height: 80 }}
                             variant="rounded"
                         />
@@ -147,12 +185,44 @@ export default function SpeakerForm({ speaker, speakers, onSubmit, onCancel }) {
                         startIcon={<CloudUploadIcon />}
                         disabled={uploading}
                     >
-                        {imagePreview ? 'Change Image' : 'Upload Image'}
+                        {imagePreview ? 'Change Thumbnail' : 'Upload Thumbnail'}
                         <input
                             type="file"
                             hidden
                             accept="image/*"
                             onChange={handleImageChange}
+                        />
+                    </Button>
+                </Box>
+            </Box>
+
+            {/* Popup Image Upload Section */}
+            <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Popup Image * <Typography component="span" variant="caption" color="text.disabled">(displayed in modal)</Typography>
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    {popupImagePreview && (
+                        <Avatar
+                            src={popupImagePreview}
+                            alt="Popup Preview"
+                            sx={{ width: 80, height: 80 }}
+                            variant="rounded"
+                        />
+                    )}
+                    <Button
+                        variant="outlined"
+                        component="label"
+                        startIcon={<CloudUploadIcon />}
+                        disabled={uploading}
+                    >
+                        {popupImagePreview ? 'Change Popup Image' : 'Upload Popup Image'}
+                        <input
+                            type="file"
+                            hidden
+                            accept="image/*"
+                            onChange={handlePopupImageChange}
+                            required={!speaker}
                         />
                     </Button>
                 </Box>

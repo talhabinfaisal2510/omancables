@@ -27,8 +27,12 @@ import {
   InsertDriveFile as FileIcon,
   ExpandMore as ExpandMoreIcon
 } from '@mui/icons-material';
+import DeleteModal from '../modals/DeleteModal';
 
 export default function BubbleList({ bubbles, media, loading, onEdit, onDelete, onViewMedia }) {
+  const [deleteModalOpen, setDeleteModalOpen] = React.useState(false); // ADDED: State to control delete modal visibility
+  const [bubbleToDelete, setBubbleToDelete] = React.useState(null); // ADDED: Store bubble ID to be deleted
+  const [deleting, setDeleting] = React.useState(false); // ADDED: Loading state during deletion
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" height="100%">
@@ -167,7 +171,8 @@ export default function BubbleList({ bubbles, media, loading, onEdit, onDelete, 
                   color="error"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onDelete(bubbleId);
+                    setBubbleToDelete(bubbleId); // CHANGED: Store bubble ID instead of directly deleting
+                    setDeleteModalOpen(true); // CHANGED: Open delete confirmation modal
                   }}
                   title="Delete bubble"
                   sx={{ padding: 'clamp(0.25rem, 1vh, 0.5rem)' }}
@@ -295,23 +300,61 @@ export default function BubbleList({ bubbles, media, loading, onEdit, onDelete, 
       });
   };
 
+  // ADDED: Handle confirmed deletion
+  const handleConfirmDelete = async () => {
+    setDeleting(true);
+    try {
+      await onDelete(bubbleToDelete); // ADDED: Call parent's delete handler
+      setDeleteModalOpen(false); // ADDED: Close modal after successful deletion
+      setBubbleToDelete(null); // ADDED: Clear selected bubble
+    } catch (error) {
+      console.error('Delete failed:', error);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // ADDED: Handle modal close
+  const handleCloseDeleteModal = () => {
+    setDeleteModalOpen(false);
+    setBubbleToDelete(null);
+  };
+
+  // ADDED: Get bubble title for delete message
+  const getBubbleTitle = () => {
+    if (!bubbleToDelete) return '';
+    const bubble = bubbles.find(b => b && (b._id || b.id) === bubbleToDelete);
+    return bubble?.title || 'this bubble';
+  };
+
   return (
-    <Box sx={{ height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column' }}> {/* Changed: Container with flex layout */}
-      <Typography
-        variant="h4"
-        component="h2"
-        gutterBottom
-        sx={{
-          fontSize: 'clamp(1.25rem, 3vw, 2rem)', // Added: Fluid font size
-          mb: 'clamp(0.5rem, 2vh, 1rem)',
-          color: 'black'
-        }}
-      >
-        Bubble Hierarchy
-      </Typography>
-      <Box sx={{ flex: 1, overflow: 'auto' }}> {/* Changed: Scrollable content area */}
-        {renderBubbles()}
+    <>
+      <Box sx={{ height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+        <Typography
+          variant="h4"
+          component="h2"
+          gutterBottom
+          sx={{
+            fontSize: 'clamp(1.25rem, 3vw, 2rem)',
+            mb: 'clamp(0.5rem, 2vh, 1rem)',
+            color: 'black'
+          }}
+        >
+          Bubble Hierarchy
+        </Typography>
+        <Box sx={{ flex: 1, overflow: 'auto' }}>
+          {renderBubbles()}
+        </Box>
       </Box>
-    </Box>
+
+      {/* ADDED: Delete confirmation modal */}
+      <DeleteModal
+        open={deleteModalOpen}
+        onClose={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        message={`Are you sure you want to delete "${getBubbleTitle()}"? This will also delete all child bubbles and cannot be undone.`}
+        loading={deleting}
+      />
+    </>
   );
 }

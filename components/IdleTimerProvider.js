@@ -1,12 +1,26 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
+
+// Create context for global reset mechanism
+const IdleResetContext = createContext(null);
+
+export const useIdleReset = () => {
+  const context = useContext(IdleResetContext);
+  if (!context) {
+    throw new Error('useIdleReset must be used within IdleTimeoutProvider');
+  }
+  return context;
+};
 
 export default function IdleTimeoutProvider({ children }) {
   const idleTimerRef = useRef(null);
+  const [resetKey, setResetKey] = useState(0);
+  const [resetUI, setResetUI] = useState(0); // ADDED: Separate UI reset counter that doesn't remount components
 
-  // Simple page refresh to reset everything to initial state
-  const resetToInitialState = () => {
-    window.location.reload(); // Refresh the entire page to reset all states
+  // CHANGED: Trigger UI reset without component remount
+  const triggerReset = () => {
+    console.log('Idle timeout: Resetting UI state');
+    setResetUI(prev => prev + 1); // CHANGED: Only increment UI reset, not full component remount
   };
 
   const resetIdleTimer = () => {
@@ -14,25 +28,14 @@ export default function IdleTimeoutProvider({ children }) {
       clearTimeout(idleTimerRef.current);
     }
     idleTimerRef.current = setTimeout(() => {
-      resetToInitialState();
-    }, 30000); // 30 seconds timeout
+      triggerReset();
+    }, 30000);
   };
 
   useEffect(() => {
-    // Start idle timer on app load
     resetIdleTimer();
 
-    // Add global event listeners to detect any user activity across the entire app
-    const events = [
-      "mousedown",
-      "mousemove",
-      "keypress",
-      "scroll",
-      "touchstart",
-      "click",
-      "keydown",
-      "touchmove",
-    ];
+    const events = ["mousedown", "keydown", "touchstart", "scroll"];
     const handleActivity = () => resetIdleTimer();
 
     events.forEach((event) => {
@@ -40,7 +43,6 @@ export default function IdleTimeoutProvider({ children }) {
     });
 
     return () => {
-      // Cleanup on app unmount
       if (idleTimerRef.current) {
         clearTimeout(idleTimerRef.current);
       }
@@ -48,7 +50,13 @@ export default function IdleTimeoutProvider({ children }) {
         document.removeEventListener(event, handleActivity, true);
       });
     };
-  }, []);
+  }, [resetKey]);
 
-  return <>{children}</>;
+  return (
+    <IdleResetContext.Provider value={{ resetKey, resetUI, triggerReset }}> {/* ADDED: Pass resetUI to context */}
+      <div key={resetKey}>
+        {children}
+      </div>
+    </IdleResetContext.Provider>
+  );
 }

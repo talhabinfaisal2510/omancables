@@ -35,27 +35,59 @@ export async function PUT(req, { params }) {
 
     const { id } = await params;
     const body = await req.json();
-    const { file, ...speakerData } = body;
-
+    const { file, popupFile, ...speakerData } = body;
+    console.log('=== PUT REQUEST START ===');
+    console.log('Speaker ID:', id);
+    console.log('Has file (thumbnail):', !!file);
+    console.log('Has popupFile:', !!popupFile);
+    console.log('speakerData.imageUrl:', speakerData.imageUrl);
+    console.log('speakerData.popupImageUrl:', speakerData.popupImageUrl);
+    console.log('speakerData keys:', Object.keys(speakerData));
     if (!id) {
       return NextResponse.json({ success: false, error: "Speaker ID is required" }, { status: 400 });
     }
 
-    let imageUrl = speakerData.imageUrl; // Keep existing URL by default
-
-    // If new file is provided, upload to Cloudinary
+    const existingSpeaker = await Speaker.findById(id).lean();
+    if (!existingSpeaker) {
+      return NextResponse.json({ success: false, error: "Speaker not found" }, { status: 404 });
+    }
+    console.log('Existing speaker imageUrl:', existingSpeaker.imageUrl);
+    console.log('Existing speaker popupImageUrl:', existingSpeaker.popupImageUrl);
+    let imageUrl = existingSpeaker.imageUrl;
+    let popupImageUrl = existingSpeaker.popupImageUrl || existingSpeaker.imageUrl;
+    console.log('Initial imageUrl (from DB):', imageUrl);
+    console.log('Initial popupImageUrl (from DB):', popupImageUrl);
+    // Upload new thumbnail only if file provided
     if (file && file.data) {
-      // Convert base64 to buffer
-      const base64Data = file.data.split(',')[1]; // Remove data:image/...;base64, prefix
+      console.log('Uploading new thumbnail...');
+      const base64Data = file.data.split(',')[1];
       const buffer = Buffer.from(base64Data, 'base64');
-
-      // Upload to Cloudinary
       const result = await uploadToCloudinary(buffer, file.type);
-      imageUrl = result.secure_url; // Update with new URL
+      imageUrl = result.secure_url;
+    }
+    else {
+      console.log('No new thumbnail file provided');
     }
 
+    // Upload new popup image only if file provided
+    if (popupFile && popupFile.data) {
+      console.log('Uploading new popup image...');
+      const popupBase64Data = popupFile.data.split(',')[1];
+      const popupBuffer = Buffer.from(popupBase64Data, 'base64');
+      const popupResult = await uploadToCloudinary(popupBuffer, popupFile.type);
+      popupImageUrl = popupResult.secure_url;
+      console.log('New popup image uploaded:', popupImageUrl);
+    }
+    else {
+      console.log('No new popup file provided');
+    }
+
+    console.log('BEFORE spreading speakerData:');
+    console.log('  imageUrl variable:', imageUrl);
+    console.log('  popupImageUrl variable:', popupImageUrl);
+
     // Check for any time overlap with existing speakers (excluding current one)
-    const existingSpeaker = await Speaker.findOne({
+    const overlappingSpeaker = await Speaker.findOne({
       _id: { $ne: id }, // Exclude current speaker being updated
       $or: [
         // Updated speaker starts during existing speaker's time
@@ -76,43 +108,47 @@ export async function PUT(req, { params }) {
       ]
     }).lean();
 
-    if (existingSpeaker) { // Prevent overlapping time slots
+    if (overlappingSpeaker) {
       return NextResponse.json(
         {
           success: false,
-          error: `Time slot overlaps with ${existingSpeaker.name} (${existingSpeaker.startTime} - ${existingSpeaker.endTime}). Only one speaker can be live at a time.`
+          error: `Time slot overlaps with ${overlappingSpeaker.name} (${overlappingSpeaker.startTime} - ${overlappingSpeaker.endTime}). Only one speaker can be live at a time.`
         },
         { status: 409 }
       );
     }
 
-    if (existingSpeaker) { // Prevent duplicate time slots
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Another speaker (${existingSpeaker.name}) is already scheduled for ${speakerData.startTime} - ${speakerData.endTime}. Only one speaker can be live at a time.`
-        },
-        { status: 409 } // 409 Conflict status code
-      );
-    }
+    // Update speaker with new data
+    const { imageUrl: _, popupImageUrl: __, ...cleanSpeakerData } = speakerData;
+
+    console.log('AFTER removing URLs from speakerData:');
+    console.log('  cleanSpeakerData keys:', Object.keys(cleanSpeakerData));
+    console.log('  imageUrl to save:', imageUrl);
+    console.log('  popupImageUrl to save:', popupImageUrl);
 
     // Update speaker with new data
     const speaker = await Speaker.findByIdAndUpdate(
       id,
       {
-        ...speakerData,
-        imageUrl
+        ...cleanSpeakerData,
+        imageUrl,
+        popupImageUrl
       },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true, strict: false }
     ).lean();
+
+    console.log('Raw speaker object keys:', Object.keys(speaker));
+    console.log('speaker.popupImageUrl:', speaker.popupImageUrl);
 
     if (!speaker) {
       return NextResponse.json({ success: false, error: "Speaker not found" }, { status: 404 });
     }
-
+    console.log('Updated speaker from DB:', JSON.stringify(speaker, null, 2));
+    console.log('=== PUT REQUEST END ===\n');
     return NextResponse.json({ success: true, data: speaker }, { status: 200 });
   } catch (err) {
     console.error("PUT speaker error:", err);
+    console.error("Error stack:", err.stack);
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }

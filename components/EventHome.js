@@ -5,15 +5,17 @@ import CssBaseline from "@mui/material/CssBaseline";
 import Box from "@mui/material/Box";
 import VideoHero from "./VideoHero";
 import SpeakersShowcase from "./SpeakersShowcase";
-
+import { useIdleReset } from "../components/IdleTimerProvider";
 const theme = createTheme({ palette: { mode: "dark" } });
 
 import { useState, useEffect } from "react";
 
+
 export default function EventHome() {
   const [speakers, setSpeakers] = useState([]);
-  const [videoUrl, setVideoUrl] = useState(''); // ADDED: State for dynamic video URL
+  const [videoUrl, setVideoUrl] = useState('');
   const [loading, setLoading] = useState(true);
+  const { resetKey} = useIdleReset(); // ADDED: Also get resetUI (though not used here, just for consistency)
 
   useEffect(() => {
     // CHANGED: Fetch both speakers and home configuration
@@ -51,17 +53,19 @@ export default function EventHome() {
   }, []);
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Box sx={{
-        height: "100vh",
-        display: "flex", // ADDED: Use flex layout for proper height distribution
-        flexDirection: "column", // ADDED: Stack children vertically
-        overflow: "hidden" // ADDED: Prevent any scrolling at root level
-      }}>
-        {videoUrl && <VideoHero src={videoUrl} />}
-        {!loading && <SpeakersShowcase speakers={speakers} />}
-      </Box>
-    </ThemeProvider>
+    <div key={`home-${resetKey}`}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Box sx={{
+          height: "100vh",
+          display: "flex", // ADDED: Use flex layout for proper height distribution
+          flexDirection: "column", // ADDED: Stack children vertically
+          overflow: "hidden" // ADDED: Prevent any scrolling at root level
+        }}>
+          {videoUrl && <VideoHero src={videoUrl} />}
+          {!loading && <SpeakersShowcase speakers={speakers} />}
+        </Box>
+      </ThemeProvider>
+    </div >
   );
 }

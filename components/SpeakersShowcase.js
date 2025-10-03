@@ -1,8 +1,10 @@
 "use client";
-import React from "react";
+import React, { useState,useEffect } from "react"; // ADDED: useState hook for modal state management
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
+import ImageModal from "../components/modals/ImageModal"; // ADDED: Import ImageModal component
+import { useIdleReset } from "../components/IdleTimerProvider";
 
 const isLive = (startTime, endTime) => {
   const now = new Date();
@@ -18,6 +20,16 @@ const isLive = (startTime, endTime) => {
 };
 
 export default function SpeakersShowcase({ speakers }) {
+  const { resetUI } = useIdleReset(); // ADDED: Get resetUI from context
+  const [selectedSpeaker, setSelectedSpeaker] = useState(null);
+
+  // ADDED: Close speaker modal when idle timeout triggers
+  useEffect(() => {
+    if (resetUI > 0) { // ADDED: Only reset if resetUI has been triggered
+      setSelectedSpeaker(null); // ADDED: Close speaker modal
+    }
+  }, [resetUI]); // ADDED: Trigger whenever resetUI counter changes
+
   if (!speakers || speakers.length === 0) return null;
 
   // Determine live speaker based on current time
@@ -46,6 +58,7 @@ export default function SpeakersShowcase({ speakers }) {
       {/* Featured Speaker Card */}
       {featured && (
         <Stack
+          onClick={() => setSelectedSpeaker(featured)}
           alignItems="center"
           justifyContent="center"
           spacing="clamp(2px, 0.4vh, 6px)" // Changed: Responsive spacing between elements
@@ -192,6 +205,7 @@ export default function SpeakersShowcase({ speakers }) {
           {rest.concat(rest).map((spk, idx) => (
             <Box
               key={`${spk._id}-${idx}`}
+              onClick={() => setSelectedSpeaker(spk)}
               sx={{
                 display: "flex",
                 flexDirection: "column",
@@ -275,6 +289,17 @@ export default function SpeakersShowcase({ speakers }) {
           }
         }
       `}</style>
+      {selectedSpeaker && (
+        <ImageModal
+          speaker={{
+            name: selectedSpeaker.name,
+            designation: selectedSpeaker.designation,
+            image: selectedSpeaker.popupImageUrl, // Using imageUrl from your data structure
+            isLive: selectedSpeaker._id === liveSpeaker?._id // Check if clicked speaker is live
+          }}
+          onClose={() => setSelectedSpeaker(null)} // Close modal by resetting state
+        />
+      )}
     </Box>
   );
 }

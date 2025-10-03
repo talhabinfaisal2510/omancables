@@ -104,7 +104,6 @@ export default function BubbleApp() {
   };
 
   const handleDeleteBubble = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this bubble?')) return;
 
     try {
       const response = await fetch(`/api/bubble/${id}`, { // Updated endpoint to match folder structure

@@ -23,21 +23,40 @@ export async function POST(req) {
     try {
         await dbConnect();
         const body = await req.json();
-        const { file, ...speakerData } = body;
+        const { file, popupFile, ...speakerData } = body;
+
+        console.log('=== POST REQUEST START ===');
+        console.log('Has file (thumbnail):', !!file);
+        console.log('Has popupFile:', !!popupFile);
 
         if (!file) {
             return NextResponse.json(
-                { success: false, error: "No file provided" },
+                { success: false, error: "Thumbnail image is required" },
                 { status: 400 }
             );
         }
 
-        // Convert base64 to buffer
-        const base64Data = file.data.split(',')[1]; // Remove data:image/...;base64, prefix
-        const buffer = Buffer.from(base64Data, 'base64');
+        if (!popupFile) {
+            return NextResponse.json(
+                { success: false, error: "Popup image is required" },
+                { status: 400 }
+            );
+        }
 
-        // Upload to Cloudinary
+        // Upload main thumbnail image
+        console.log('Uploading thumbnail image...');
+        const base64Data = file.data.split(',')[1];
+        const buffer = Buffer.from(base64Data, 'base64');
         const result = await uploadToCloudinary(buffer, file.type);
+        console.log('Thumbnail uploaded:', result.secure_url);
+
+        // Upload popup image - now required
+        console.log('Uploading popup image...');
+        const popupBase64Data = popupFile.data.split(',')[1];
+        const popupBuffer = Buffer.from(popupBase64Data, 'base64');
+        const popupResult = await uploadToCloudinary(popupBuffer, popupFile.type);
+        const popupImageUrl = popupResult.secure_url;
+        console.log('Popup image uploaded:', popupImageUrl);
 
         // Check for any time overlap with existing speakers
         const existingSpeaker = await Speaker.findOne({
@@ -60,7 +79,7 @@ export async function POST(req) {
             ]
         }).lean();
 
-        if (existingSpeaker) { // Prevent overlapping time slots
+        if (existingSpeaker) {
             return NextResponse.json(
                 {
                     success: false,
@@ -70,21 +89,19 @@ export async function POST(req) {
             );
         }
 
-        if (existingSpeaker) { // Prevent duplicate time slots
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: `A speaker is already scheduled for ${speakerData.startTime} - ${speakerData.endTime}. Only one speaker can be live at a time.`
-                },
-                { status: 409 } // 409 Conflict status code
-            );
-        }
+        console.log('Creating speaker with:', {
+            imageUrl: result.secure_url,
+            popupImageUrl: popupImageUrl
+        });
 
-        // Create speaker
         const speaker = await Speaker.create({
             ...speakerData,
             imageUrl: result.secure_url,
+            popupImageUrl: popupImageUrl,
         });
+
+        console.log('Speaker created:', JSON.stringify(speaker, null, 2));
+        console.log('=== POST REQUEST END ===\n');
 
         return NextResponse.json(
             { success: true, data: speaker },
@@ -92,6 +109,7 @@ export async function POST(req) {
         );
     } catch (err) {
         console.error("Error creating speaker:", err);
+        console.error("Error stack:", err.stack);
         return NextResponse.json(
             { success: false, error: err.message },
             { status: 500 }

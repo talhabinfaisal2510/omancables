@@ -82,7 +82,7 @@ export default function SpeakerManagement() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this speaker?')) return;
+
 
     try {
       const response = await fetch(`/api/speakers/${id}`, {

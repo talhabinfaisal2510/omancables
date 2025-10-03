@@ -13,12 +13,16 @@ const speakerSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  popupImageUrl: {
+    type: String,
+    required: true,
+  },
   startTime: {
-    type: String, // Format: "HH:MM"
+    type: String,
     required: true,
   },
   endTime: {
-    type: String, // Format: "HH:MM"
+    type: String,
     required: true,
   },
   order: {
@@ -27,9 +31,15 @@ const speakerSchema = new mongoose.Schema({
   },
 }, {
   timestamps: true,
+  strict: false,
+  strictQuery: false,
 });
 
-// Check if the model exists in mongoose.models first, else create it
-const Speaker = mongoose.models.Speaker || mongoose.model('Speaker', speakerSchema);
+// Delete cached model to force schema reload
+if (mongoose.models.Speaker) {
+  delete mongoose.models.Speaker;
+}
+
+const Speaker = mongoose.model('Speaker', speakerSchema);
 
 export default Speaker;

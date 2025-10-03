@@ -1,5 +1,5 @@
 "use client";
-import React, { useState,useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Button, Typography, Collapse } from "@mui/material";
 import { use1080x1920 } from "../hooks/use1080x1920";
 import PdfModal from "../components/modals/PdfModal";
@@ -7,9 +7,11 @@ import WebModal from "../components/modals/WebModal";
 import QRModal from "../components/modals/QRModal";
 import PhotosModal from "../components/modals/PhotosModal";
 import VideoModal from "../components/modals/VideoModal";
+import { useIdleReset } from "../components/IdleTimerProvider";
 
 const VideoOverlay = ({ onVideoChange }) => {
   const is1080x1920 = use1080x1920();
+  const { resetUI } = useIdleReset(); // ADDED: Get resetUI from context
   // Remove hardcoded buttonHierarchy object completely
   const [bubbles, setBubbles] = useState([]); // Store fetched bubbles from database
   const [loading, setLoading] = useState(true);
@@ -38,19 +40,8 @@ const VideoOverlay = ({ onVideoChange }) => {
   // Get root level bubbles (call this where buttonHierarchy was used)
   const buttonHierarchy = buildBubbleHierarchy();
 
-  // Video mapping for different buttons - centralized video source management
-  const videoSources = {
-    "Featured Events":
-      "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/earth.mp4",
-    "Safety First (Zero & Beyond)":
-      "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
-    "OCI Information":
-      "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/earth.mp4",
-    "Discover OCI":
-      "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
-  };
 
-  // State to track active hierarchy levels
+
   // State to track active hierarchy levels
   const [activeMain, setActiveMain] = useState(null);
   const [activeSub, setActiveSub] = useState(null);
@@ -61,9 +52,25 @@ const VideoOverlay = ({ onVideoChange }) => {
     type: null,
     url: null,
     title: null,
-    mediaId: null, // Added mediaId for QR modal to generate download link
-    mediaArray: null, // Added for PhotosModal which expects array of media objects
+    mediaId: null,
+    mediaArray: null,
   });
+
+  // ADDED: Reset UI state when resetUI changes (idle timeout triggered)
+  useEffect(() => {
+    if (resetUI > 0) { // ADDED: Only reset if resetUI has been triggered
+      setActiveMain(null); // ADDED: Close expanded bubbles
+      setActiveSub(null); // ADDED: Close sub-bubbles
+      setModalState({ // ADDED: Close all modals
+        open: false,
+        type: null,
+        url: null,
+        title: null,
+        mediaId: null,
+        mediaArray: null,
+      });
+    }
+  }, [resetUI]); // ADDED: Trigger whenever resetUI counter changes
 
   useEffect(() => {
     const fetchBubbles = async () => {
