@@ -14,8 +14,7 @@ const VideoOverlay = ({ onVideoChange }) => {
   const { resetUI } = useIdleReset(); // ADDED: Get resetUI from context
   // Remove hardcoded buttonHierarchy object completely
   const [bubbles, setBubbles] = useState([]); // Store fetched bubbles from database
-  const [loading, setLoading] = useState(true);
-  // Add this function to build hierarchy dynamically from database bubbles
+
   const buildBubbleHierarchy = (parentId = null) => {
     return bubbles
       .filter(bubble => {
@@ -222,12 +221,20 @@ const VideoOverlay = ({ onVideoChange }) => {
       {/* Main 3 buttons */}
       <Box
         sx={{
-          display: "flex",
-          justifyContent: "center",
-          gap: is1080x1920 ? "40px" : "12px",
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "repeat(auto-fit, minmax(clamp(80px, 15vw, 140px), 1fr))",
+            sm: "repeat(auto-fit, minmax(clamp(100px, 18vw, 160px), 1fr))",
+            md: "repeat(auto-fit, minmax(clamp(120px, 20vw, 180px), 1fr))",
+          },
+          justifyItems: "center",
+          gap: is1080x1920 ? "clamp(20px, 3vw, 50px)" : "clamp(12px, 2.5vw, 24px)",
           marginBottom: activeMain !== null ? "16px" : "0",
+          maxWidth: "100%",
+          overflow: "hidden",
           transition: "margin-bottom 0.3s ease",
           animation: "slideUp 0.6s ease-out",
+            p: is1080x1920 ? 4 : { xs: 1, sm: 2, md: 3 },
           "@keyframes slideUp": {
             from: { transform: "translateY(20px)", opacity: 0 },
             to: { transform: "translateY(0)", opacity: 1 },
@@ -244,37 +251,20 @@ const VideoOverlay = ({ onVideoChange }) => {
             <Box
               key={button.id}
               sx={{
-                animation: `slideUp 0.6s ease-out ${index * 0.1
-                  }s both, float 3s ease-in-out infinite ${index * 0.5}s`,
-                "@keyframes float": {
-                  "0%, 100%": {
-                    transform: "translateY(0px)",
-                  },
-                  "50%": {
-                    transform: "translateY(-8px)",
-                  },
-                },
-                "&:hover": {
-                  transform: "translateY(-6px) scale(1.08)",
-                  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                  animation: "none",
-                },
-                "&:active": {
-                  transform: "translateY(-3px) scale(0.96)",
-                  transition: "all 0.15s ease",
-                },
+                width: "100%",
+                display: "flex",
+                justifyContent: "center",
               }}
             >
               <Button
                 variant="contained"
                 onClick={() => handleButtonClick(buttonLabel, buttonHierarchy[buttonLabel], true)}
                 sx={{
-                  minWidth: is1080x1920
-                    ? "260px"
-                    : { xs: "80px", sm: "100px", md: "120px" },
+                  width: "100%",
+                  maxWidth: is1080x1920 ? "260px" : "clamp(80px, 90%, 140px)",
                   height: is1080x1920
                     ? "94px"
-                    : { xs: "40px", sm: "44px", md: "48px" },
+                    : "clamp(40px, 8vh, 56px)",
                   borderRadius: 3,
                   background:
                     activeMain === button.label ? "#2563eb" : "#1e3a8a", // Dark blue background for main buttons
@@ -396,12 +386,15 @@ const VideoOverlay = ({ onVideoChange }) => {
               sx={{
                 display: "grid",
                 gridTemplateColumns: {
-                  xs: "repeat(2, 1fr)",
-                  sm: "repeat(3, 1fr)",
+                  xs: "repeat(auto-fit, minmax(clamp(120px, 18vw, 180px), 1fr))",
+                  sm: "repeat(auto-fit, minmax(clamp(140px, 20vw, 200px), 1fr))",
                 },
                 justifyItems: "center",
-                gap: is1080x1920 ? "12px" : "6px",
-                mb: activeSub ? 2 : 0, // Add margin if sub-sub buttons will appear
+                gap: is1080x1920 ? "clamp(30px, 5vw, 80px)" : "clamp(12px, 2.5vw, 24px)",
+                mb: activeSub ? 2 : 0,
+                maxWidth: "100%",
+                p: is1080x1920 ? 4 : { xs: 1, sm: 2, md: 3 },
+                overflow: "hidden",
               }}
             >
               {Object.keys(buttonHierarchy[activeMain].subButtons).map(
@@ -482,10 +475,15 @@ const VideoOverlay = ({ onVideoChange }) => {
             buttonHierarchy[activeMain]?.subButtons[activeSub]?.subButtons && (
               <Box
                 sx={{
-                  display: "flex",
-                  gap: is1080x1920 ? "8px" : "4px",
-                  justifyContent: "center",
-                  flexWrap: "wrap",
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "repeat(auto-fit, minmax(clamp(120px, 18vw, 180px), 1fr))",
+                    sm: "repeat(auto-fit, minmax(clamp(140px, 20vw, 200px), 1fr))",
+                  },
+                  justifyItems: "center",
+                  gap: is1080x1920 ? "8px" : "clamp(3px, 0.8vw, 6px)",
+                  maxWidth: "100%",
+                  overflow: "hidden",
                 }}
               >
                 {Object.keys(
