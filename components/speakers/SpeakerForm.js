@@ -10,7 +10,7 @@ import {
     CircularProgress,
     Avatar
 } from '@mui/material';
-import { CloudUpload as CloudUploadIcon } from '@mui/icons-material';
+import { CloudUpload as CloudUploadIcon, Close as CloseIcon, Check as CheckIcon } from '@mui/icons-material';
 import { LocalizationProvider, TimePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 
@@ -288,17 +288,29 @@ export default function SpeakerForm({ speaker, speakers, onSubmit, onCancel }) {
                 sx={{ mb: 3 }}
             />
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                <Button onClick={onCancel} variant="outlined" disabled={uploading}>
+                <Button
+                    onClick={onCancel}
+                    variant="outlined"
+                    disabled={uploading}
+                    startIcon={<CloseIcon />}
+                    sx={{
+                        fontSize: "clamp(0.75rem, 1.5vw, 0.875rem)",
+                        padding: "clamp(0.375rem, 1vh, 0.5rem) clamp(0.75rem, 2vw, 1rem)"
+                    }}
+                >
                     Cancel
                 </Button>
                 <Button
                     type="submit"
                     variant="contained"
                     disabled={uploading}
-                    startIcon={uploading ? <CircularProgress size={16} color="inherit" /> : undefined} // Added: Shows CircularProgress icon during upload
-                    sx={{ minWidth: '120px' }} // Changed: Increased width to accommodate icon + text
+                    startIcon={uploading ? <CircularProgress size={16} color="inherit" /> : <CheckIcon />}
+                    sx={{
+                        fontSize: "clamp(0.75rem, 1.5vw, 0.875rem)",
+                        padding: "clamp(0.375rem, 1vh, 0.5rem) clamp(0.75rem, 2vw, 1rem)"
+                    }}
                 >
-                    {uploading ? (speaker ? 'Updating...' : 'Creating...') : (speaker ? 'Update' : 'Create')} {/* Changed: Shows progress text during upload */}
+                    {uploading ? (speaker ? 'Updating...' : 'Creating...') : (speaker ? 'Update' : 'Create')}
                 </Button>
             </Box>
         </Box>

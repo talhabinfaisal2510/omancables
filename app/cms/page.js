@@ -7,7 +7,7 @@ import {
   Box,
   Alert,
   Snackbar,
-  Fab,
+  Button,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -131,58 +131,43 @@ export default function BubbleApp() {
       {/* ADDED: Home video management section at top */}
       <HomeVideoManagement />
 
-      {bubbles.length === 0 && !loading ? (
-        // Show create button when no bubbles exist
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            py: 8,
-            textAlign: 'center'
-          }}
-        >
-          <Typography variant="h5" color="text.secondary" gutterBottom >
-            No bubbles found
+      <Box sx={{ mb: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h5" component="h2" color="black">
+            Bubbles
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            Get started by creating your first bubble
-          </Typography>
-          <Box
-            component="button"
-            onClick={() => setOpenCreateDialog(true)}
-            sx={{
-              px: 4,
-              py: 2,
-              bgcolor: 'primary.main',
-              color: 'black',
-              border: 'none',
-              borderRadius: 2,
-              fontSize: '1rem',
-              cursor: 'pointer',
-              '&:hover': {
-                bgcolor: 'primary.dark'
-              }
-            }}
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setOpenCreateDialog(true)} // Open dialog in create mode
+            sx={{ bgcolor: 'primary.main' }}
           >
-            Create Your First Bubble
-          </Box>
+            Add Bubble
+          </Button>
         </Box>
-      ) : (
-        <BubbleList
-          bubbles={bubbles}
-          media={media}
-          loading={loading}
-          onEdit={(bubble) => {
-            setSelectedBubble(bubble);
-            setOpenUpdateDialog(true);
-          }}
-          onDelete={(id) => handleDeleteBubble(id)}
-          onViewMedia={(mediaItem) => {
-            setSelectedMedia(mediaItem);
-          }}
-        />
-      )}
+
+        {bubbles.length === 0 && !loading ? (
+          <Box sx={{ textAlign: 'center', py: 6 }}>
+            <Typography variant="body1" color="text.secondary">
+              No bubbles found. Click "Add Bubble" to create your first one.
+            </Typography>
+          </Box>
+        ) : (
+          <BubbleList
+            bubbles={bubbles}
+            media={media}
+            loading={loading}
+            onEdit={(bubble) => {
+              setSelectedBubble(bubble);
+              setOpenUpdateDialog(true);
+            }}
+            onDelete={(id) => handleDeleteBubble(id)}
+            onViewMedia={(mediaItem) => {
+              setSelectedMedia(mediaItem);
+            }}
+          />
+        )}
+      </Box>
 
       {/* Create Bubble Dialog */}
       <Dialog
@@ -243,16 +228,6 @@ export default function BubbleApp() {
       </Dialog>
 
 
-      {/* Floating Action Button */}
-      <Fab
-        color="primary"
-        aria-label="add"
-        sx={{ position: 'fixed', bottom: 16, right: 16 }}
-        onClick={() => setOpenCreateDialog(true)}
-      >
-        <AddIcon />
-      </Fab>
-
       {/* Snackbars for feedback */}
       <Snackbar
         open={!!error}
@@ -274,7 +249,7 @@ export default function BubbleApp() {
         </Alert>
       </Snackbar>
       <SpeakerManagement />
-    </Container>
+    </Container >
 
   );
 }

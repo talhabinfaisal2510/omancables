@@ -13,6 +13,7 @@ import {
   Alert
 } from '@mui/material';
 import CircularProgress from '@mui/material/CircularProgress';
+import { Close as CloseIcon, Check as CheckIcon } from '@mui/icons-material';
 
 export default function UpdateBubbleForm({ bubble, bubbles, media, onSubmit, onCancel }) {
   const [formData, setFormData] = useState({
@@ -333,6 +334,7 @@ export default function UpdateBubbleForm({ bubble, bubbles, media, onSubmit, onC
             onClick={onCancel}
             disabled={isSubmitting}
             variant="outlined"
+            startIcon={<CloseIcon />}
           >
             Cancel
           </Button>
@@ -340,7 +342,7 @@ export default function UpdateBubbleForm({ bubble, bubbles, media, onSubmit, onC
             type="submit"
             variant="contained"
             disabled={isSubmitting}
-            startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : null} // Added: CircularProgress shows during update
+            startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : <CheckIcon />}
           >
             {isSubmitting ? 'Updating...' : 'Update Bubble'}
           </Button>

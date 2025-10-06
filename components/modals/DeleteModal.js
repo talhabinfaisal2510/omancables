@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 const DeleteModal = ({ open, onClose, onConfirm, message, loading = false }) => {
     return (
@@ -113,19 +114,10 @@ const DeleteModal = ({ open, onClose, onConfirm, message, loading = false }) => 
                     onClick={onClose}
                     disabled={loading}
                     variant="outlined"
+                    startIcon={<CloseIcon />}
                     sx={{
-                        minWidth: "clamp(100px, 15vw, 120px)",
-                        height: "clamp(40px, 5vh, 48px)",
-                        borderRadius: 2,
-                        textTransform: "none",
-                        fontWeight: 600,
-                        fontSize: "clamp(0.875rem, 1.2vw, 1rem)",
-                        color: "#455a64",
-                        borderColor: "rgba(69, 90, 100, 0.3)",
-                        "&:hover": {
-                            borderColor: "#455a64",
-                            bgcolor: "rgba(69, 90, 100, 0.05)",
-                        },
+                        fontSize: "clamp(0.75rem, 1.5vw, 0.875rem)",
+                        padding: "clamp(0.375rem, 1vh, 0.5rem) clamp(0.75rem, 2vw, 1rem)",
                     }}
                 >
                     Cancel
@@ -134,24 +126,10 @@ const DeleteModal = ({ open, onClose, onConfirm, message, loading = false }) => 
                     onClick={onConfirm}
                     disabled={loading}
                     variant="contained"
+                    startIcon={<DeleteIcon />}
                     sx={{
-                        minWidth: "clamp(100px, 15vw, 120px)",
-                        height: "clamp(40px, 5vh, 48px)",
-                        borderRadius: 2,
-                        textTransform: "none",
-                        fontWeight: 600,
-                        fontSize: "clamp(0.875rem, 1.2vw, 1rem)",
-                        bgcolor: "#3b82f6", // CHANGED: Proper blue hex (matches your app's primary blue)
-                        color: "#ffffff",
-                        boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)", // CHANGED: Blue shadow to match button color
-                        "&:hover": {
-                            bgcolor: "#2563eb", // CHANGED: Darker blue on hover (consistent with your VideoOverlay buttons)
-                            boxShadow: "0 6px 16px rgba(59, 130, 246, 0.4)", // CHANGED: Enhanced blue shadow on hover
-                        },
-                        "&:disabled": {
-                            bgcolor: "rgba(59, 130, 246, 0.5)",
-                            color: "#ffffff",
-                        },
+                        fontSize: "clamp(0.75rem, 1.5vw, 0.875rem)",
+                        padding: "clamp(0.375rem, 1vh, 0.5rem) clamp(0.75rem, 2vw, 1rem)",
                     }}
                 >
                     {loading ? "Deleting..." : "Delete"}

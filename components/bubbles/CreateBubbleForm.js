@@ -12,6 +12,7 @@ import {
   Stack,
   Alert
 } from '@mui/material';
+import { Close as CloseIcon, Add as AddIcon } from '@mui/icons-material';
 import CircularProgress from '@mui/material/CircularProgress';
 
 export default function CreateBubbleForm({ bubbles, media, onSubmit, onCancel }) {
@@ -279,9 +280,10 @@ export default function CreateBubbleForm({ bubbles, media, onSubmit, onCancel })
             onClick={onCancel}
             disabled={isSubmitting}
             variant="outlined"
+            startIcon={<CloseIcon />}
             sx={{
-              fontSize: 'clamp(0.75rem, 1.5vw, 0.875rem)', // Added: Fluid font
-              padding: 'clamp(0.375rem, 1vh, 0.5rem) clamp(0.75rem, 2vw, 1rem)' // Added: Fluid padding
+              fontSize: 'clamp(0.75rem, 1.5vw, 0.875rem)',
+              padding: 'clamp(0.375rem, 1vh, 0.5rem) clamp(0.75rem, 2vw, 1rem)'
             }}
           >
             Cancel
@@ -290,7 +292,7 @@ export default function CreateBubbleForm({ bubbles, media, onSubmit, onCancel })
             type="submit"
             variant="contained"
             disabled={isSubmitting}
-            startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : null} // Added: CircularProgress shows during submission
+            startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : <AddIcon />}
             sx={{
               fontSize: 'clamp(0.75rem, 1.5vw, 0.875rem)',
               padding: 'clamp(0.375rem, 1vh, 0.5rem) clamp(0.75rem, 2vw, 1rem)'
